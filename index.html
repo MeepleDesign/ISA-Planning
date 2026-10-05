@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ISA Accumulation & Drawdown Planner</title>
+    <title>ISA & Pension Financial Planner</title>
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -20,6 +20,7 @@
             --hannah-color: #d946ef;
             --tony-color: #0284c7;
             --combined-color: #16a34a;
+            --pension-color: #7c3aed;
         }
 
         body {
@@ -45,6 +46,14 @@
             margin-bottom: 24px;
         }
 
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
         h1 {
             margin: 0;
             font-size: 24px;
@@ -55,6 +64,37 @@
             margin-top: 4px;
             font-size: 14px;
             color: var(--text-muted);
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: -2px;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
         }
 
         /* Profile Controls */
@@ -116,15 +156,25 @@
         .btn:hover { background: var(--primary-hover); }
         .btn-secondary { background: #64748b; }
         .btn-secondary:hover { background: #475569; }
+        .btn-whatsapp { background: #25D366; color: #ffffff; }
+        .btn-whatsapp:hover { background: #1da851; }
         .btn-share { background: #059669; }
         .btn-share:hover { background: #047857; }
         .btn-danger { background: #ef4444; }
         .btn-danger:hover { background: #dc2626; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
 
         /* Input Grid Sections */
         .grid-layout {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .grid-layout-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
             margin-bottom: 32px;
         }
@@ -141,6 +191,7 @@
         .section-card.hannah { border-top: 4px solid var(--hannah-color); }
         .section-card.tony { border-top: 4px solid var(--tony-color); }
         .section-card.general { border-top: 4px solid var(--combined-color); }
+        .section-card.pension { border-top: 4px solid var(--pension-color); }
 
         .section-title {
             display: flex;
@@ -154,6 +205,7 @@
         .section-title.hannah-title { color: var(--hannah-color); }
         .section-title.tony-title { color: var(--tony-color); }
         .section-title.general-title { color: var(--combined-color); }
+        .section-title.pension-title { color: var(--pension-color); }
 
         .form-grid {
             display: grid;
@@ -183,6 +235,43 @@
             word-wrap: break-word;
             line-height: 1.3;
         }
+
+        /* Expense Breakdown Section */
+        .expenses-container {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 32px;
+        }
+
+        .expense-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .expense-row input[type="text"] { flex: 2; }
+        .expense-row input[type="number"] { flex: 1; }
+
+        .expense-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 14px;
+            border-top: 2px dashed #cbd5e1;
+            margin-top: 14px;
+            font-weight: 700;
+        }
+
+        .remaining-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .remaining-badge.positive { background: #dcfce7; color: #15803d; }
+        .remaining-badge.negative { background: #fee2e2; color: #b91c1c; }
 
         /* Summary Metric Cards */
         .summary-cards {
@@ -228,6 +317,15 @@
 
         .metric-card.highlight .value {
             color: #047857;
+        }
+
+        .metric-card.pension-highlight {
+            background: #f5f3ff;
+            border-color: #ddd6fe;
+        }
+
+        .metric-card.pension-highlight .value {
+            color: #6d28d9;
         }
 
         /* Table */
@@ -279,9 +377,13 @@
         .text-hannah { color: var(--hannah-color); font-weight: 600; }
         .text-tony { color: var(--tony-color); font-weight: 600; }
         .text-combined { color: var(--combined-color); font-weight: 700; }
+        .text-pension { color: var(--pension-color); font-weight: 700; }
+
+        .page-content { display: none; }
+        .page-content.active { display: block; }
 
         @media (max-width: 960px) {
-            .grid-layout { grid-template-columns: 1fr; }
+            .grid-layout, .grid-layout-2 { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -289,142 +391,315 @@
 
 <div class="container">
     <header>
-        <h1>ISA Accumulation & Drawdown Planner</h1>
-        <div class="subtitle">Personalised multi-phase ISA growth and drawdown calculator</div>
+        <div class="header-top">
+            <div>
+                <h1>ISA & Pension Financial Planner</h1>
+                <div class="subtitle">Comprehensive accumulation, drawdown & retirement modeling</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchPage('isaPage')">ISA Planner</button>
+            <button class="tab-btn" onclick="switchPage('pensionPage')">Pension Planner</button>
+        </div>
     </header>
 
-    <!-- Profile Management Bar -->
-    <div class="profile-bar">
-        <label for="profileSelect">Saved Profiles:</label>
-        <select id="profileSelect" onchange="loadProfile()"></select>
-        <input type="text" id="newProfileName" placeholder="New Profile Name..." style="width: 170px;">
-        <button class="btn" onclick="saveNewProfile()">Save New</button>
-        <button class="btn btn-secondary" onclick="updateCurrentProfile()">Update</button>
-        <button class="btn btn-share" onclick="sharePlan()">🔗 Share Plan</button>
-        <button class="btn btn-danger" onclick="deleteProfile()">Delete</button>
+    <!-- PAGE 1: ISA PLANNER -->
+    <div id="isaPage" class="page-content active">
+        <!-- Profile Management Bar -->
+        <div class="profile-bar">
+            <label for="profileSelect">Saved ISA Profiles:</label>
+            <select id="profileSelect" onchange="loadProfile()"></select>
+            <input type="text" id="newProfileName" placeholder="New Profile Name..." style="width: 150px;">
+            <button class="btn" onclick="saveNewProfile()">Save New</button>
+            <button class="btn btn-secondary" onclick="updateCurrentProfile()">Update</button>
+            <button class="btn btn-whatsapp" onclick="shareWhatsApp()">💬 WhatsApp</button>
+            <button class="btn btn-share" onclick="sharePlan()">🔗 Copy Link</button>
+            <button class="btn btn-danger" onclick="deleteProfile()">Delete</button>
+        </div>
+
+        <!-- Inputs Section -->
+        <div class="grid-layout">
+            <!-- Hannah's ISA -->
+            <div class="section-card hannah">
+                <div class="section-title hannah-title">
+                    <span>Hannah's ISA</span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Current Starting Balance (£)</label>
+                        <input type="number" id="hannah_init" value="25500" oninput="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>Phase 1 Savings (£/mo)</label>
+                        <input type="number" id="hannah_p1" value="800" step="50" oninput="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>Phase 1 Time (Yrs)</label>
+                        <input type="number" id="hannah_p1_yrs" value="3" oninput="calculate()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Phase 2 Savings (£/mo)</label>
+                        <input type="number" id="hannah_p2" value="100" step="50" oninput="calculate()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tony's ISA -->
+            <div class="section-card tony">
+                <div class="section-title tony-title">
+                    <span>Tony's ISA</span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Current Starting Balance (£)</label>
+                        <input type="number" id="tony_init" value="42824" oninput="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>Phase 1 Savings (£/mo)</label>
+                        <input type="number" id="tony_p1" value="500" step="50" oninput="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>Phase 1 Time (Yrs)</label>
+                        <input type="number" id="tony_p1_yrs" value="3" oninput="calculate()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Phase 2 Savings (£/mo)</label>
+                        <input type="number" id="tony_p2" value="500" step="50" oninput="calculate()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drawdown & Growth Settings -->
+            <div class="section-card general">
+                <div class="section-title general-title">
+                    <span>Drawdown & Growth Settings</span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Drawdown Start (Yrs)</label>
+                        <input type="number" id="dd_start" value="15" oninput="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>Drawdown Duration (Yrs)</label>
+                        <input type="number" id="dd_yrs" value="5" oninput="calculate()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Annual Drawdown Target (£)</label>
+                        <input type="number" id="dd_annual" value="50000" step="1000" oninput="calculate()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Net Annual Market Return (%)</label>
+                        <input type="number" id="return_rate" value="5.0" step="0.5" oninput="calculate()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Annual Drawdown Expense Breakdown -->
+        <div class="expenses-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="margin: 0; font-size: 16px; color: #1e293b;">Annual Drawdown Expenses Breakdown</h3>
+                <button class="btn btn-sm" onclick="addExpenseItem()">+ Add Expense Item</button>
+            </div>
+            <div id="expenseList"></div>
+            <div class="expense-summary">
+                <div>
+                    <span>Total Allocated Expenses: </span>
+                    <strong id="totalExpensesText">£0</strong>
+                </div>
+                <div>
+                    <span>Unallocated Drawdown: </span>
+                    <span id="remainingDrawdownBadge" class="remaining-badge positive">£0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Metrics -->
+        <div class="summary-cards">
+            <div class="metric-card">
+                <div class="label">End of Phase 1 Pot</div>
+                <div class="value" id="res_p1_total">£0</div>
+                <div class="sub-value" id="res_p1_sub">Hannah: £0 | Tony: £0</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Pot at Drawdown Start</div>
+                <div class="value" id="res_dd_start_total">£0</div>
+                <div class="sub-value" id="res_dd_start_sub">Hannah: £0 | Tony: £0</div>
+            </div>
+            <div class="metric-card highlight">
+                <div class="label">Ages at Drawdown Start</div>
+                <div class="value" id="res_ages_at_dd">--</div>
+                <div class="sub-value" id="res_ages_sub">Hannah: -- | Tony: --</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Remaining Balance at End</div>
+                <div class="value" id="res_dd_end_total">£0</div>
+                <div class="sub-value" id="res_dd_end_sub">Post drawdown phase</div>
+            </div>
+        </div>
+
+        <!-- Schedule Table -->
+        <h2>Year-by-Year ISA Financial Schedule</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Phase</th>
+                        <th>Hannah Contrib.</th>
+                        <th>Tony Contrib.</th>
+                        <th>Total Growth</th>
+                        <th>Withdrawal</th>
+                        <th>Hannah's Balance</th>
+                        <th>Tony's Balance</th>
+                        <th>Combined Total</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleBody"></tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- Inputs Section -->
-    <div class="grid-layout">
-        <!-- Hannah's ISA -->
-        <div class="section-card hannah">
-            <div class="section-title hannah-title">
-                <span>Hannah's ISA</span>
+    <!-- PAGE 2: PENSION PLANNER -->
+    <div id="pensionPage" class="page-content">
+        <div class="profile-bar">
+            <label for="pensionIsaProfileLink">Linked ISA Profile:</label>
+            <select id="pensionIsaProfileLink" onchange="calculatePension()">
+                <option value="">-- Manual ISA Pot Input --</option>
+            </select>
+            <span style="font-size: 13px; color: var(--text-muted); margin-left: auto;">
+                Pulls remaining ISA pot balance directly into retirement projections.
+            </span>
+        </div>
+
+        <div class="grid-layout-2">
+            <!-- Hannah's Pension -->
+            <div class="section-card hannah">
+                <div class="section-title hannah-title">
+                    <span>Hannah's Pension</span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Current Pension Pot (£)</label>
+                        <input type="number" id="pen_hannah_init" value="85000" oninput="calculatePension()">
+                    </div>
+                    <div class="form-group">
+                        <label>Monthly Contrib. (£/mo)</label>
+                        <input type="number" id="pen_hannah_contrib" value="400" step="50" oninput="calculatePension()">
+                    </div>
+                    <div class="form-group">
+                        <label>Target Retirement Age</label>
+                        <input type="number" id="pen_hannah_retire_age" value="60" oninput="calculatePension()">
+                    </div>
+                </div>
             </div>
-            <div class="form-grid">
-                <div class="form-group full-width">
-                    <label>Current Starting Balance (£)</label>
-                    <input type="number" id="hannah_init" value="25500" oninput="calculate()">
+
+            <!-- Tony's Pension -->
+            <div class="section-card tony">
+                <div class="section-title tony-title">
+                    <span>Tony's Pension</span>
                 </div>
-                <div class="form-group">
-                    <label>Phase 1 Savings (£/mo)</label>
-                    <input type="number" id="hannah_p1" value="800" step="50" oninput="calculate()">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Current Pension Pot (£)</label>
+                        <input type="number" id="pen_tony_init" value="110000" oninput="calculatePension()">
+                    </div>
+                    <div class="form-group">
+                        <label>Monthly Contrib. (£/mo)</label>
+                        <input type="number" id="pen_tony_contrib" value="600" step="50" oninput="calculatePension()">
+                    </div>
+                    <div class="form-group">
+                        <label>Target Retirement Age</label>
+                        <input type="number" id="pen_tony_retire_age" value="60" oninput="calculatePension()">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Phase 1 Time (Yrs)</label>
-                    <input type="number" id="hannah_p1_yrs" value="3" oninput="calculate()">
+            </div>
+
+            <!-- Pension Growth & Retirement Income -->
+            <div class="section-card pension">
+                <div class="section-title pension-title">
+                    <span>Pension Growth & Drawdown</span>
                 </div>
-                <div class="form-group full-width">
-                    <label>Phase 2 Savings (£/mo)</label>
-                    <input type="number" id="hannah_p2" value="100" step="50" oninput="calculate()">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Net Annual Return (%)</label>
+                        <input type="number" id="pen_return_rate" value="5.0" step="0.5" oninput="calculatePension()">
+                    </div>
+                    <div class="form-group">
+                        <label>Desired Annual Income (£)</label>
+                        <input type="number" id="pen_annual_drawdown" value="40000" step="1000" oninput="calculatePension()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Linked ISA Pot Balance Carried Over (£)</label>
+                        <input type="number" id="pen_isa_carried" value="0" oninput="calculatePension()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- State Pension & Combined Settings -->
+            <div class="section-card general">
+                <div class="section-title general-title">
+                    <span>State Pension & Duration</span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>State Pension Starts Age</label>
+                        <input type="number" id="pen_state_age" value="67" oninput="calculatePension()">
+                    </div>
+                    <div class="form-group">
+                        <label>Est. State Pension (£/yr each)</label>
+                        <input type="number" id="pen_state_amount" value="11500" step="500" oninput="calculatePension()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Projection Horizon (Years)</label>
+                        <input type="number" id="pen_years" value="30" oninput="calculatePension()">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Tony's ISA -->
-        <div class="section-card tony">
-            <div class="section-title tony-title">
-                <span>Tony's ISA</span>
+        <!-- Summary Metrics -->
+        <div class="summary-cards">
+            <div class="metric-card pension-highlight">
+                <div class="label">Total Combined Pension at 60</div>
+                <div class="value" id="pen_res_retire_pot">£0</div>
+                <div class="sub-value" id="pen_res_retire_sub">Hannah: £0 | Tony: £0</div>
             </div>
-            <div class="form-grid">
-                <div class="form-group full-width">
-                    <label>Current Starting Balance (£)</label>
-                    <input type="number" id="tony_init" value="42824" oninput="calculate()">
-                </div>
-                <div class="form-group">
-                    <label>Phase 1 Savings (£/mo)</label>
-                    <input type="number" id="tony_p1" value="500" step="50" oninput="calculate()">
-                </div>
-                <div class="form-group">
-                    <label>Phase 1 Time (Yrs)</label>
-                    <input type="number" id="tony_p1_yrs" value="3" oninput="calculate()">
-                </div>
-                <div class="form-group full-width">
-                    <label>Phase 2 Savings (£/mo)</label>
-                    <input type="number" id="tony_p2" value="500" step="50" oninput="calculate()">
-                </div>
+            <div class="metric-card highlight">
+                <div class="label">Total Combined Wealth (Inc ISA)</div>
+                <div class="value" id="pen_res_total_wealth">£0</div>
+                <div class="sub-value">At pension retirement start</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Est. Remaining Pot at Age 85</div>
+                <div class="value" id="pen_res_pot_85">£0</div>
+                <div class="sub-value">After planned retirement drawdowns</div>
             </div>
         </div>
 
-        <!-- Drawdown & Growth Settings -->
-        <div class="section-card general">
-            <div class="section-title general-title">
-                <span>Drawdown & Growth Settings</span>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Drawdown Start (Yrs)</label>
-                    <input type="number" id="dd_start" value="15" oninput="calculate()">
-                </div>
-                <div class="form-group">
-                    <label>Drawdown Duration (Yrs)</label>
-                    <input type="number" id="dd_yrs" value="5" oninput="calculate()">
-                </div>
-                <div class="form-group full-width">
-                    <label>Annual Drawdown Amount (£)</label>
-                    <input type="number" id="dd_annual" value="50000" step="1000" oninput="calculate()">
-                </div>
-                <div class="form-group full-width">
-                    <label>Net Annual Market Return (%)</label>
-                    <input type="number" id="return_rate" value="5.0" step="0.5" oninput="calculate()">
-                </div>
-            </div>
+        <!-- Schedule Table -->
+        <h2>Year-by-Year Pension & Retirement Schedule</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Ages (H / T)</th>
+                        <th>Phase</th>
+                        <th>Hannah Contrib.</th>
+                        <th>Tony Contrib.</th>
+                        <th>State Pension</th>
+                        <th>Drawdown</th>
+                        <th>Hannah Pot</th>
+                        <th>Tony Pot</th>
+                        <th>Total Combined</th>
+                    </tr>
+                </thead>
+                <tbody id="pensionScheduleBody"></tbody>
+            </table>
         </div>
-    </div>
-
-    <!-- Summary Metrics -->
-    <div class="summary-cards">
-        <div class="metric-card">
-            <div class="label">End of Phase 1 Pot</div>
-            <div class="value" id="res_p1_total">£0</div>
-            <div class="sub-value" id="res_p1_sub">Hannah: £0 | Tony: £0</div>
-        </div>
-        <div class="metric-card">
-            <div class="label">Pot at Drawdown Start</div>
-            <div class="value" id="res_dd_start_total">£0</div>
-            <div class="sub-value" id="res_dd_start_sub">Hannah: £0 | Tony: £0</div>
-        </div>
-        <div class="metric-card highlight">
-            <div class="label">Ages at Drawdown Start</div>
-            <div class="value" id="res_ages_at_dd">--</div>
-            <div class="sub-value" id="res_ages_sub">Hannah: -- | Tony: --</div>
-        </div>
-        <div class="metric-card">
-            <div class="label">Remaining Balance at End</div>
-            <div class="value" id="res_dd_end_total">£0</div>
-            <div class="sub-value" id="res_dd_end_sub">Post drawdown phase</div>
-        </div>
-    </div>
-
-    <!-- Schedule Table -->
-    <h2>Year-by-Year Financial Schedule</h2>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Year</th>
-                    <th>Phase</th>
-                    <th>Hannah Contrib.</th>
-                    <th>Tony Contrib.</th>
-                    <th>Total Growth</th>
-                    <th>Withdrawal</th>
-                    <th>Hannah's Balance</th>
-                    <th>Tony's Balance</th>
-                    <th>Combined Total</th>
-                </tr>
-            </thead>
-            <tbody id="scheduleBody"></tbody>
-        </table>
     </div>
 </div>
 
@@ -433,27 +708,46 @@ const defaultProfiles = {
     "Default Plan (3-Year Move)": {
         hannah_init: 25500, hannah_p1: 800, hannah_p1_yrs: 3, hannah_p2: 100,
         tony_init: 42824, tony_p1: 500, tony_p1_yrs: 3, tony_p2: 500,
-        dd_start: 15, dd_yrs: 5, dd_annual: 50000, return_rate: 5.0
+        dd_start: 15, dd_yrs: 5, dd_annual: 50000, return_rate: 5.0,
+        expenses: [
+            { name: "Living Expenses", amount: 28000 },
+            { name: "Holidays & Travel", amount: 8000 },
+            { name: "Car & Maintenance", amount: 4000 },
+            { name: "Buffer / Contingency", amount: 10000 }
+        ]
     },
     "Hannah £0 Post-Move": {
         hannah_init: 25500, hannah_p1: 800, hannah_p1_yrs: 3, hannah_p2: 0,
         tony_init: 42824, tony_p1: 500, tony_p1_yrs: 3, tony_p2: 500,
-        dd_start: 15, dd_yrs: 5, dd_annual: 50000, return_rate: 5.0
-    },
-    "5-Year Move Horizon": {
-        hannah_init: 25500, hannah_p1: 800, hannah_p1_yrs: 5, hannah_p2: 100,
-        tony_init: 42824, tony_p1: 500, tony_p1_yrs: 5, tony_p2: 500,
-        dd_start: 15, dd_yrs: 5, dd_annual: 50000, return_rate: 5.0
+        dd_start: 15, dd_yrs: 5, dd_annual: 50000, return_rate: 5.0,
+        expenses: [
+            { name: "Living Expenses", amount: 25000 },
+            { name: "Holidays", amount: 6000 }
+        ]
     }
 };
 
 const HANNAH_DOB = new Date(1986, 5, 26); // June 26, 1986
 const TONY_DOB = new Date(1987, 9, 8);   // October 8, 1987
 
+let expenseItems = [];
+
+function switchPage(pageId) {
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    
+    document.getElementById(pageId).classList.add('active');
+    event.target.classList.add('active');
+
+    if (pageId === 'pensionPage') {
+        populatePensionIsaDropdown();
+        calculatePension();
+    }
+}
+
 function calculateAge(dob, yearsFromNow) {
     const targetDate = new Date();
     targetDate.setFullYear(targetDate.getFullYear() + yearsFromNow);
-    
     let age = targetDate.getFullYear() - dob.getFullYear();
     const m = targetDate.getMonth() - dob.getMonth();
     if (m < 0 || (m === 0 && targetDate.getDate() < dob.getDate())) {
@@ -464,6 +758,62 @@ function calculateAge(dob, yearsFromNow) {
 
 function fmt(num) {
     return "£" + Math.round(num).toLocaleString('en-GB');
+}
+
+/* Expenses Management */
+function renderExpenses() {
+    const container = document.getElementById('expenseList');
+    container.innerHTML = '';
+    
+    expenseItems.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = 'expense-row';
+        row.innerHTML = `
+            <input type="text" value="${item.name}" placeholder="Expense Item Name" oninput="updateExpenseItem(${index}, 'name', this.value)">
+            <input type="number" value="${item.amount}" step="250" placeholder="Annual £" oninput="updateExpenseItem(${index}, 'amount', this.value)">
+            <button class="btn btn-danger btn-sm" onclick="removeExpenseItem(${index})">✕</button>
+        `;
+        container.appendChild(row);
+    });
+
+    updateExpenseSummary();
+}
+
+function addExpenseItem() {
+    expenseItems.push({ name: "New Expense", amount: 1000 });
+    renderExpenses();
+    calculate();
+}
+
+function updateExpenseItem(index, field, value) {
+    if (field === 'amount') {
+        expenseItems[index][field] = parseFloat(value) || 0;
+    } else {
+        expenseItems[index][field] = value;
+    }
+    updateExpenseSummary();
+}
+
+function removeExpenseItem(index) {
+    expenseItems.splice(index, 1);
+    renderExpenses();
+    calculate();
+}
+
+function updateExpenseSummary() {
+    const totalExpenses = expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    const ddAnnual = parseFloat(document.getElementById('dd_annual').value) || 0;
+    const remaining = ddAnnual - totalExpenses;
+
+    document.getElementById('totalExpensesText').innerText = fmt(totalExpenses);
+    const badge = document.getElementById('remainingDrawdownBadge');
+    badge.innerText = fmt(remaining);
+
+    if (remaining >= 0) {
+        badge.className = 'remaining-badge positive';
+    } else {
+        badge.className = 'remaining-badge negative';
+    }
 }
 
 function getInputs() {
@@ -479,16 +829,35 @@ function getInputs() {
         dd_start: parseInt(document.getElementById('dd_start').value) || 0,
         dd_yrs: parseInt(document.getElementById('dd_yrs').value) || 0,
         dd_annual: parseFloat(document.getElementById('dd_annual').value) || 0,
-        return_rate: parseFloat(document.getElementById('return_rate').value) || 0
+        return_rate: parseFloat(document.getElementById('return_rate').value) || 0,
+        expenses: expenseItems
     };
 }
 
 function setInputs(data) {
     for (let key in data) {
-        let el = document.getElementById(key);
-        if (el) el.value = data[key];
+        if (key === 'expenses') {
+            expenseItems = JSON.parse(JSON.stringify(data[key] || []));
+            renderExpenses();
+        } else {
+            let el = document.getElementById(key);
+            if (el) el.value = data[key];
+        }
     }
     calculate();
+}
+
+function generateShareableUrl() {
+    const inputs = getInputs();
+    const params = new URLSearchParams();
+    for (let k in inputs) {
+        if (k === 'expenses') {
+            params.set('expenses', JSON.stringify(inputs.expenses));
+        } else {
+            params.set(k, inputs[k]);
+        }
+    }
+    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
 
 function calculate() {
@@ -582,7 +951,6 @@ function calculate() {
         tbody.innerHTML += row;
     }
 
-    // Age Calculations
     const hannahAgeAtDD = calculateAge(HANNAH_DOB, inp.dd_start);
     const tonyAgeAtDD = calculateAge(TONY_DOB, inp.dd_start);
 
@@ -597,14 +965,168 @@ function calculate() {
 
     document.getElementById('res_dd_end_total').innerText = fmt(dd_end_total);
     document.getElementById('res_dd_end_sub').innerText = `Remaining after ${inp.dd_yrs} yrs of ${fmt(inp.dd_annual)}/yr drawdown`;
+
+    updateExpenseSummary();
+    if (document.getElementById('pensionPage').classList.contains('active')) {
+        calculatePension();
+    }
 }
 
-/* Share Functionality */
-function sharePlan() {
-    const inputs = getInputs();
-    const params = new URLSearchParams(inputs);
-    const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+/* PENSION CALCULATOR LOGIC */
+function populatePensionIsaDropdown() {
+    const profiles = getProfiles();
+    const select = document.getElementById('pensionIsaProfileLink');
+    const currentVal = select.value;
+    
+    select.innerHTML = '<option value="">-- Manual ISA Pot Input --</option>';
+    for (let key in profiles) {
+        let opt = document.createElement('option');
+        opt.value = key;
+        opt.innerText = key;
+        select.appendChild(opt);
+    }
+    if (currentVal && profiles[currentVal]) {
+        select.value = currentVal;
+    }
+}
 
+function calculatePension() {
+    const selectedProfileKey = document.getElementById('pensionIsaProfileLink').value;
+    let carriedIsa = parseFloat(document.getElementById('pen_isa_carried').value) || 0;
+
+    if (selectedProfileKey) {
+        const profiles = getProfiles();
+        const p = profiles[selectedProfileKey];
+        if (p) {
+            // Calculate final remaining ISA pot for selected profile
+            const rate = p.return_rate / 100 / 12;
+            let h_bal = p.hannah_init, t_bal = p.tony_init;
+            for (let yr = 1; yr <= p.dd_start + p.dd_yrs; yr++) {
+                for (let m = 1; m <= 12; m++) {
+                    let h_c = 0, t_c = 0, w = 0;
+                    if (yr <= p.dd_start) {
+                        h_c = (yr <= p.hannah_p1_yrs) ? p.hannah_p1 : p.hannah_p2;
+                        t_c = (yr <= p.tony_p1_yrs) ? p.tony_p1 : p.tony_p2;
+                    } else {
+                        w = p.dd_annual / 12;
+                    }
+                    let comb = h_bal + t_bal;
+                    let mg = comb * rate;
+                    if (comb > 0) {
+                        h_bal = Math.max(0, h_bal + (mg * (h_bal/comb)) + h_c - (w * (h_bal/comb)));
+                        t_bal = Math.max(0, t_bal + (mg * (t_bal/comb)) + t_c - (w * (t_bal/comb)));
+                    }
+                }
+            }
+            carriedIsa = h_bal + t_bal;
+            document.getElementById('pen_isa_carried').value = Math.round(carriedIsa);
+        }
+    }
+
+    const h_init = parseFloat(document.getElementById('pen_hannah_init').value) || 0;
+    const t_init = parseFloat(document.getElementById('pen_tony_init').value) || 0;
+    const h_contrib = parseFloat(document.getElementById('pen_hannah_contrib').value) || 0;
+    const t_contrib = parseFloat(document.getElementById('pen_tony_contrib').value) || 0;
+    const h_retire_age = parseInt(document.getElementById('pen_hannah_retire_age').value) || 60;
+    const t_retire_age = parseInt(document.getElementById('pen_tony_retire_age').value) || 60;
+    const return_rate = (parseFloat(document.getElementById('pen_return_rate').value) || 0) / 100 / 12;
+    const desired_drawdown = parseFloat(document.getElementById('pen_annual_drawdown').value) || 0;
+    const state_age = parseInt(document.getElementById('pen_state_age').value) || 67;
+    const state_amount = parseFloat(document.getElementById('pen_state_amount').value) || 0;
+    const horizon_yrs = parseInt(document.getElementById('pen_years').value) || 30;
+
+    let tbody = document.getElementById('pensionScheduleBody');
+    tbody.innerHTML = '';
+
+    let h_bal = h_init;
+    let t_bal = t_init;
+
+    const current_h_age = calculateAge(HANNAH_DOB, 0);
+    const current_t_age = calculateAge(TONY_DOB, 0);
+
+    let pot_at_retire_h = 0, pot_at_retire_t = 0;
+    let pot_at_85 = 0;
+
+    for (let yr = 1; yr <= horizon_yrs; yr++) {
+        const h_age = current_h_age + yr;
+        const t_age = current_t_age + yr;
+
+        const is_h_retire = h_age >= h_retire_age;
+        const is_t_retire = t_age >= t_retire_age;
+
+        let total_state = 0;
+        if (h_age >= state_age) total_state += state_amount;
+        if (t_age >= state_age) total_state += state_amount;
+
+        let net_drawdown_needed = Math.max(0, desired_drawdown - total_state);
+
+        let yr_h_c = 0, yr_t_c = 0;
+
+        for (let m = 1; m <= 12; m++) {
+            let hc = is_h_retire ? 0 : h_contrib;
+            let tc = is_t_retire ? 0 : t_contrib;
+            let w = (is_h_retire && is_t_retire) ? (net_drawdown_needed / 12) : 0;
+
+            let comb = h_bal + t_bal;
+            let mg = comb * return_rate;
+
+            if (comb > 0) {
+                h_bal = Math.max(0, h_bal + (mg * (h_bal/comb)) + hc - (w * (h_bal/comb)));
+                t_bal = Math.max(0, t_bal + (mg * (t_bal/comb)) + tc - (w * (t_bal/comb)));
+            } else {
+                h_bal = Math.max(0, h_bal + hc);
+                t_bal = Math.max(0, t_bal + tc);
+            }
+
+            yr_h_c += hc;
+            yr_t_c += tc;
+        }
+
+        if (h_age === h_retire_age) pot_at_retire_h = h_bal;
+        if (t_age === t_retire_age) pot_at_retire_t = t_bal;
+        if (h_age === 85) pot_at_85 = h_bal + t_bal;
+
+        let phaseText = (is_h_retire && is_t_retire) ? "Retirement Drawdown" : "Accumulation";
+        let badgeClass = (is_h_retire && is_t_retire) ? "badge-dd" : "badge-p1";
+
+        let row = `<tr>
+            <td>Year ${yr}</td>
+            <td>Age ${h_age} / ${t_age}</td>
+            <td><span class="badge ${badgeClass}">${phaseText}</span></td>
+            <td>${fmt(yr_h_c * 12)}</td>
+            <td>${fmt(yr_t_c * 12)}</td>
+            <td>${fmt(total_state)}</td>
+            <td>${(is_h_retire && is_t_retire) ? '-' + fmt(net_drawdown_needed) : '£0'}</td>
+            <td class="text-hannah">${fmt(h_bal)}</td>
+            <td class="text-tony">${fmt(t_bal)}</td>
+            <td class="text-pension">${fmt(h_bal + t_bal)}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+    }
+
+    document.getElementById('pen_res_retire_pot').innerText = fmt(pot_at_retire_h + pot_at_retire_t);
+    document.getElementById('pen_res_retire_sub').innerText = `Hannah: ${fmt(pot_at_retire_h)} | Tony: ${fmt(pot_at_retire_t)}`;
+    document.getElementById('pen_res_total_wealth').innerText = fmt(pot_at_retire_h + pot_at_retire_t + carriedIsa);
+    document.getElementById('pen_res_pot_85').innerText = fmt(pot_at_85);
+}
+
+/* Share Functions */
+function shareWhatsApp() {
+    const shareUrl = generateShareableUrl();
+    const inp = getInputs();
+    const message = `📊 *ISA Growth & Drawdown Plan Summary*\n\n` +
+        `• *Drawdown Start:* Year ${inp.dd_start} (Ages: Hannah ${calculateAge(HANNAH_DOB, inp.dd_start)}, Tony ${calculateAge(TONY_DOB, inp.dd_start)})\n` +
+        `• *Pot at Drawdown:* ${document.getElementById('res_dd_start_total').innerText}\n` +
+        `• *Annual Drawdown:* ${fmt(inp.dd_annual)} / year for ${inp.dd_yrs} years\n` +
+        `• *Remaining Balance:* ${document.getElementById('res_dd_end_total').innerText}\n\n` +
+        `Click here to open and view this exact scenario:\n${shareUrl}`;
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+function sharePlan() {
+    const shareUrl = generateShareableUrl();
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(shareUrl).then(() => {
             alert("Direct share link copied to clipboard!");
@@ -622,7 +1144,11 @@ function loadInputsFromUrl() {
 
     let urlData = {};
     for (const [key, val] of params.entries()) {
-        urlData[key] = parseFloat(val);
+        if (key === 'expenses') {
+            try { urlData[key] = JSON.parse(val); } catch(e) {}
+        } else {
+            urlData[key] = parseFloat(val);
+        }
     }
     setInputs(urlData);
     return true;
@@ -649,6 +1175,7 @@ function refreshProfileDropdown(selectedKey) {
         if (key === selectedKey) opt.selected = true;
         select.appendChild(opt);
     }
+    populatePensionIsaDropdown();
 }
 
 function loadProfile() {
