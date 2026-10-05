@@ -6,7 +6,7 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; color: #333; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1, h2 { color: #004080; }
+        h1, h2, h3 { color: #004080; }
         .section { margin-bottom: 25px; padding: 15px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; }
         label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
         input, select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
@@ -37,6 +37,7 @@
             <option value="Realistic">Realistic</option>
             <option value="Hopeful">Hopeful</option>
         </select>
+        <button onclick="resetProfilesToDefault()" style="background:#555; margin-top: 10px;">Reset Profiles to Default</button>
     </div>
 
     <!-- Hannah's ISA Inputs -->
@@ -108,7 +109,7 @@
 </div>
 
 <script>
-    // Hardcoded Profiles to ensure persistence across fresh instances
+    // Hardcoded Profiles with exact parameters
     const defaultSavingsProfiles = {
         "Realistic Less Drawdown": {
             hannah: { startingBalance: 25500, phase1Monthly: 800, phase1Years: 2, phase2Monthly: 100 },
@@ -160,6 +161,14 @@
         if (!localStorage.getItem('expenseProfiles')) {
             localStorage.setItem('expenseProfiles', JSON.stringify(defaultExpenses));
         }
+    }
+
+    function resetProfilesToDefault() {
+        localStorage.setItem('savingsProfiles', JSON.stringify(defaultSavingsProfiles));
+        localStorage.setItem('expenseProfiles', JSON.stringify(defaultExpenses));
+        loadExpenses();
+        loadSelectedSavingsProfile();
+        alert("Profiles reset to defaults!");
     }
 
     function loadExpenses() {
@@ -233,7 +242,6 @@
     }
 
     function calculate() {
-        // Retrieve inputs
         const hStart = parseFloat(document.getElementById('hannahStarting').value) || 0;
         const hP1Mo = parseFloat(document.getElementById('hannahPhase1Mo').value) || 0;
         const hP1Yrs = parseInt(document.getElementById('hannahPhase1Yrs').value) || 0;
@@ -249,7 +257,6 @@
         const targetDrawdown = parseFloat(document.getElementById('targetDrawdown').value) || 0;
         const netReturnRate = (parseFloat(document.getElementById('netReturn').value) || 0) / 100;
 
-        // Calculate total allocated expenses
         const expenses = JSON.parse(localStorage.getItem('expenseProfiles')) || [];
         const totalAllocatedExpenses = expenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
         const unallocated = targetDrawdown - totalAllocatedExpenses;
@@ -257,24 +264,28 @@
         document.getElementById('expenseSummary').innerText = 
             `Total Allocated Expenses: £${totalAllocatedExpenses.toLocaleString()} | Unallocated Drawdown: £${unallocated.toLocaleString()}`;
 
-        // Simulation Loop
         let hPot = hStart;
         let tPot = tStart;
         let scheduleHtml = '';
+        let potAtDrawdown = 0;
         
-        const totalYears = ddStartYear + ddDuration + 5; // Extra post-drawdown buffer years
+        const totalYears = ddStartYear + ddDuration + 5;
 
         for (let year = 1; year <= totalYears; year++) {
             let phaseName = "";
             let hContrib = 0;
             let tContrib = 0;
             let withdrawal = 0;
+            let prevTotalPot = hPot + tPot; // Capture pot total before this year's actions
+
+            // Capture exact pot size at the start of the drawdown year
+            if (year === ddStartYear) {
+                potAtDrawdown = hPot + tPot;
+            }
 
             if (year < ddStartYear) {
                 phaseName = "Savings";
-                // Hannah Contribution Phase logic
                 hContrib = (year <= hP1Yrs ? hP1Mo : hP2Mo) * 12;
-                // Tony Contribution Phase logic
                 tContrib = (year <= tP1Yrs ? tP1Mo : tP2Mo) * 12;
 
                 hPot = (hPot + hContrib) * (1 + netReturnRate);
@@ -283,11 +294,11 @@
                 phaseName = "Drawdown";
                 withdrawal = -targetDrawdown;
                 
-                // Draw down proportionally from pots
                 let totalPot = hPot + tPot;
                 if (totalPot > 0) {
                     let hShare = hPot / totalPot;
                     let tShare = tPot / totalPot;
+                    // Deduct withdrawal proportionally, then apply growth
                     hPot = (hPot - (targetDrawdown * hShare)) * (1 + netReturnRate);
                     tPot = (tPot - (targetDrawdown * tShare)) * (1 + netReturnRate);
                 }
@@ -297,7 +308,8 @@
                 tPot = tPot * (1 + netReturnRate);
             }
 
-            let totalGrowth = (hPot + tPot) - (hPot / (1 + netReturnRate)) - hContrib - tContrib;
+            // Growth is the difference in total pots minus the contributions added and withdrawals taken
+            let totalGrowth = (hPot + tPot) - prevTotalPot - hContrib - tContrib - withdrawal;
 
             scheduleHtml += `<tr>
                 <td>Yr ${year} (${phaseName})</td>
@@ -308,6 +320,20 @@
             </tr>`;
         }
 
+        // If they enter a timeline where drawdown doesn't start, default it nicely
+        if (potAtDrawdown === 0) { potAtDrawdown = hPot + tPot; }
+
         document.getElementById('scheduleBody').innerHTML = scheduleHtml;
         document.getElementById('summaryOutput').innerText = 
-            `Pot at Drawdown Start (Year ${ddStartYear}): £${(hPot + tPot).toLocaleString(undefined, {maximumFractionDigits
+            `Pot at Drawdown Start (Year ${ddStartYear}): £${potAtDrawdown.toLocaleString(undefined, {maximumFractionDigits:0})} | Final Remaining Balance: £${(hPot + tPot).toLocaleString(undefined, {maximumFractionDigits:0})}`;
+    }
+
+    window.onload = function() {
+        initializeStorage();
+        loadExpenses();
+        loadSelectedSavingsProfile();
+    };
+</script>
+
+</body>
+</html>
