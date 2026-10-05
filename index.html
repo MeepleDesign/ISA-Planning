@@ -74,6 +74,9 @@
             margin-bottom: 24px;
             flex-wrap: wrap;
         }
+        .profile-bar.expense-bar {
+            background: #e2e8f0;
+        }
         .profile-bar label { font-weight: 600; font-size: 14px; color: #334155; }
         select, input[type="text"], input[type="number"] {
             width: 100%;
@@ -217,15 +220,16 @@
 
     <!-- TAB 1: ISA PLANNER -->
     <div id="tab-isa" class="tab-content active">
+        <!-- SAVINGS PROFILE BAR -->
         <div class="profile-bar">
-            <label for="profileSelect">Saved Profiles:</label>
-            <select id="profileSelect" onchange="loadProfile()"></select>
-            <input type="text" id="newProfileName" placeholder="New Profile Name..." style="width: 150px;">
-            <button class="btn" onclick="saveNewProfile()">Save New</button>
-            <button class="btn btn-secondary" onclick="updateCurrentProfile()">Update</button>
+            <label for="savingsProfileSelect">Savings Profiles:</label>
+            <select id="savingsProfileSelect" onchange="loadSavingsProfile()"></select>
+            <input type="text" id="newSavingsProfileName" placeholder="New Savings Profile..." style="width: 140px;">
+            <button class="btn" onclick="saveNewSavingsProfile()">Save New</button>
+            <button class="btn btn-secondary" onclick="updateCurrentSavingsProfile()">Update</button>
             <button class="btn btn-whatsapp" onclick="shareWhatsApp()">💬 WhatsApp</button>
             <button class="btn btn-share" onclick="sharePlan()">🔗 Copy Link</button>
-            <button class="btn btn-danger" onclick="deleteProfile()">Delete</button>
+            <button class="btn btn-danger" onclick="deleteSavingsProfile()">Delete</button>
         </div>
 
         <div class="grid-layout">
@@ -258,6 +262,16 @@
                     <div class="form-group full-width"><label>Net Return (%)</label><input type="number" id="return_rate" value="5.0" step="0.5" oninput="calculate()"></div>
                 </div>
             </div>
+        </div>
+
+        <!-- EXPENSES PROFILE BAR -->
+        <div class="profile-bar expense-bar">
+            <label for="expenseProfileSelect">Expense Profiles:</label>
+            <select id="expenseProfileSelect" onchange="loadExpenseProfile()"></select>
+            <input type="text" id="newExpenseProfileName" placeholder="New Expense Profile..." style="width: 140px;">
+            <button class="btn" onclick="saveNewExpenseProfile()">Save New</button>
+            <button class="btn btn-secondary" onclick="updateCurrentExpenseProfile()">Update</button>
+            <button class="btn btn-danger" onclick="deleteExpenseProfile()">Delete</button>
         </div>
 
         <div class="expenses-container">
@@ -322,8 +336,8 @@
                     <div class="form-group"><label>Growth (%)</label><input type="number" id="p_growth" value="5.0" step="0.5" oninput="calculatePension()"></div>
                     <div class="form-group"><label>State Pension (£/yr)</label><input type="number" id="p_state_amt" value="11500" oninput="calculatePension()"></div>
                     <div class="form-group full-width">
-                        <label>ISA Profile Carried Over</label>
-                        <select id="p_isa_profile" onchange="calculatePension()"></select>
+                        <label>Savings Profile Carried Over</label>
+                        <select id="p_savings_profile" onchange="syncSavingsProfileFromPension()"></select>
                     </div>
                 </div>
             </div>
@@ -355,429 +369,4 @@
             <div class="metric-card"><div class="label">Pot at Retirement (Age 60)</div><div class="value" id="p_res_pot_retire">£0</div><div class="sub-value" id="p_res_pot_sub">Combined DC Pot</div></div>
             <div class="metric-card"><div class="label">Carried-Over ISA Pot</div><div class="value" id="p_res_isa_pot">£0</div><div class="sub-value">Listed separately</div></div>
             <div class="metric-card highlight"><div class="label">Required Annual DC Drawdown</div><div class="value" id="p_res_req_dc">£0</div><div class="sub-value" id="p_res_req_sub">Before State/DB Pensions</div></div>
-            <div class="metric-card"><div class="label">Est. Combined Income Tax</div><div class="value" id="p_res_tax_est">£0</div><div class="sub-value">Based on tax bands</div></div>
-        </div>
-
-        <h2>Pension Schedule</h2>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr><th>Year</th><th>Ages (H/T)</th><th>Phase</th><th>Hannah DC</th><th>Tony DC</th><th>DB Income</th><th>State Pensions</th><th>Gross DC Drawdown</th><th>Combined DC Balance</th></tr>
-                </thead>
-                <tbody id="pensionScheduleBody"></tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<script>
-const defaultProfiles = {
-    "Default Plan (3-Year Move)": {
-        hannah_init: 25500, hannah_p1: 800, hannah_p1_yrs: 3, hannah_p2: 100,
-        tony_init: 42824, tony_p1: 500, tony_p1_yrs: 3, tony_p2: 500,
-        dd_start: 15, dd_yrs: 5, dd_annual: 50000, return_rate: 5.0
-    }
-};
-
-let isaExpenses = [{ name: "Living Expenses", amt: 30000 }, { name: "Holidays & Travel", amt: 10000 }];
-let pensionExpenses = [{ name: "Retirement Living", amt: 35000 }, { name: "Travel & Leisure", amt: 10000 }];
-
-const HANNAH_DOB = new Date(1986, 5, 26);
-const TONY_DOB = new Date(1987, 9, 8);
-
-function switchTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    if (tab === 'isa') {
-        document.querySelectorAll('.tab-btn')[0].classList.add('active');
-        document.getElementById('tab-isa').classList.add('active');
-    } else {
-        document.querySelectorAll('.tab-btn')[1].classList.add('active');
-        document.getElementById('tab-pension').classList.add('active');
-        populateISADropdown();
-        calculatePension();
-    }
-}
-
-function calculateAge(dob, yearsFromNow) {
-    const targetDate = new Date();
-    targetDate.setFullYear(targetDate.getFullYear() + yearsFromNow);
-    let age = targetDate.getFullYear() - dob.getFullYear();
-    const m = targetDate.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && targetDate.getDate() < dob.getDate())) age--;
-    return age;
-}
-
-function fmt(num) { return "£" + Math.round(num).toLocaleString('en-GB'); }
-
-function renderExpenses(type) {
-    const listEl = document.getElementById(type === 'isa' ? 'isa_expenses_list' : 'pension_expenses_list');
-    const items = type === 'isa' ? isaExpenses : pensionExpenses;
-    listEl.innerHTML = '';
-    
-    items.forEach((exp, idx) => {
-        const row = document.createElement('div');
-        row.className = 'expense-row';
-        row.innerHTML = `
-            <input type="text" value="${exp.name}" oninput="updateExpName('${type}', ${idx}, this.value)">
-            <input type="number" value="${exp.amt}" step="500" oninput="updateExpAmt('${type}', ${idx}, this.value)">
-            <button class="btn btn-danger btn-sm" onclick="removeExpense('${type}', ${idx})">✕</button>
-        `;
-        listEl.appendChild(row);
-    });
-    
-    const targetAmt = type === 'isa' ? (parseFloat(document.getElementById('dd_annual').value) || 0) : (parseFloat(document.getElementById('p_target_net').value) || 0);
-    const totalExp = items.reduce((sum, item) => sum + item.amt, 0);
-    const leftAmt = targetAmt - totalExp;
-
-    document.getElementById(type === 'isa' ? 'isa_exp_total' : 'pension_exp_total').innerText = fmt(totalExp);
-    document.getElementById(type === 'isa' ? 'isa_exp_left' : 'pension_exp_left').innerText = fmt(leftAmt);
-}
-
-function addExpense(type) {
-    if (type === 'isa') isaExpenses.push({ name: "New Expense", amt: 1000 });
-    else pensionExpenses.push({ name: "New Expense", amt: 1000 });
-    renderExpenses(type);
-}
-
-function removeExpense(type, idx) {
-    if (type === 'isa') isaExpenses.splice(idx, 1);
-    else pensionExpenses.splice(idx, 1);
-    renderExpenses(type);
-}
-
-function updateExpName(type, idx, val) {
-    if (type === 'isa') isaExpenses[idx].name = val;
-    else pensionExpenses[idx].name = val;
-}
-
-function updateExpAmt(type, idx, val) {
-    const num = parseFloat(val) || 0;
-    if (type === 'isa') isaExpenses[idx].amt = num;
-    else pensionExpenses[idx].amt = num;
-    renderExpenses(type);
-}
-
-function getInputs() {
-    return {
-        hannah_init: parseFloat(document.getElementById('hannah_init').value) || 0,
-        hannah_p1: parseFloat(document.getElementById('hannah_p1').value) || 0,
-        hannah_p1_yrs: parseInt(document.getElementById('hannah_p1_yrs').value) || 0,
-        hannah_p2: parseFloat(document.getElementById('hannah_p2').value) || 0,
-        tony_init: parseFloat(document.getElementById('tony_init').value) || 0,
-        tony_p1: parseFloat(document.getElementById('tony_p1').value) || 0,
-        tony_p1_yrs: parseInt(document.getElementById('tony_p1_yrs').value) || 0,
-        tony_p2: parseFloat(document.getElementById('tony_p2').value) || 0,
-        dd_start: parseInt(document.getElementById('dd_start').value) || 0,
-        dd_yrs: parseInt(document.getElementById('dd_yrs').value) || 0,
-        dd_annual: parseFloat(document.getElementById('dd_annual').value) || 0,
-        return_rate: parseFloat(document.getElementById('return_rate').value) || 0
-    };
-}
-
-function setInputs(data) {
-    for (let key in data) {
-        let el = document.getElementById(key);
-        if (el) el.value = data[key];
-    }
-    calculate();
-}
-
-function calculate() {
-    const inp = getInputs();
-    const rate = inp.return_rate / 100 / 12;
-
-    let hannah_bal = inp.hannah_init;
-    let tony_bal = inp.tony_init;
-
-    let tbody = document.getElementById('scheduleBody');
-    tbody.innerHTML = '';
-
-    const maxP1Yrs = Math.max(inp.hannah_p1_yrs, inp.tony_p1_yrs);
-    const maxYears = Math.max(inp.dd_start + inp.dd_yrs + 5, maxP1Yrs + 5, 22);
-
-    let p1_hannah = 0, p1_tony = 0;
-    let dd_start_hannah = 0, dd_start_tony = 0;
-    let dd_end_total = 0;
-
-    for (let yr = 1; yr <= maxYears; yr++) {
-        let yr_hannah_contrib = 0;
-        let yr_tony_contrib = 0;
-        let yr_withdrawal = 0;
-        let yr_growth = 0;
-
-        let phaseText = yr <= inp.dd_start ? "Savings" : (yr <= inp.dd_start + inp.dd_yrs ? "Drawdown" : "Post-Drawdown");
-        let badgeClass = yr <= inp.dd_start ? "badge-p1" : (yr <= inp.dd_start + inp.dd_yrs ? "badge-dd" : "badge-state");
-
-        for (let m = 1; m <= 12; m++) {
-            let h_c = 0, t_c = 0, w = 0;
-            if (yr <= inp.dd_start) {
-                h_c = (yr <= inp.hannah_p1_yrs) ? inp.hannah_p1 : inp.hannah_p2;
-                t_c = (yr <= inp.tony_p1_yrs) ? inp.tony_p1 : inp.tony_p2;
-            } else if (yr <= inp.dd_start + inp.dd_yrs) {
-                w = inp.dd_annual / 12;
-            }
-
-            let combined = hannah_bal + tony_bal;
-            let m_growth = combined * rate;
-            yr_growth += m_growth;
-
-            if (combined > 0) {
-                let h_share = hannah_bal / combined;
-                let t_share = tony_bal / combined;
-                hannah_bal = Math.max(0, hannah_bal + (m_growth * h_share) + h_c - (w * h_share));
-                tony_bal = Math.max(0, tony_bal + (m_growth * t_share) + t_c - (w * t_share));
-            } else {
-                hannah_bal = Math.max(0, hannah_bal + h_c);
-                tony_bal = Math.max(0, tony_bal + t_c);
-            }
-
-            yr_hannah_contrib += h_c;
-            yr_tony_contrib += t_c;
-            yr_withdrawal += w;
-        }
-
-        if (yr === maxP1Yrs) { p1_hannah = hannah_bal; p1_tony = tony_bal; }
-        if (yr === inp.dd_start) { dd_start_hannah = hannah_bal; dd_start_tony = tony_bal; }
-        if (yr === inp.dd_start + inp.dd_yrs) { dd_end_total = hannah_bal + tony_bal; }
-
-        tbody.innerHTML += `<tr>
-            <td>Year ${yr}</td>
-            <td><span class="badge ${badgeClass}">${phaseText}</span></td>
-            <td>${fmt(yr_hannah_contrib)}</td>
-            <td>${fmt(yr_tony_contrib)}</td>
-            <td>${fmt(yr_growth)}</td>
-            <td>${yr_withdrawal > 0 ? '-' + fmt(yr_withdrawal) : '£0'}</td>
-            <td class="text-hannah">${fmt(hannah_bal)}</td>
-            <td class="text-tony">${fmt(tony_bal)}</td>
-            <td class="text-combined">${fmt(hannah_bal + tony_bal)}</td>
-        </tr>`;
-    }
-
-    const hannahAgeAtDD = calculateAge(HANNAH_DOB, inp.dd_start);
-    const tonyAgeAtDD = calculateAge(TONY_DOB, inp.dd_start);
-
-    document.getElementById('res_p1_total').innerText = fmt(p1_hannah + p1_tony);
-    document.getElementById('res_p1_sub').innerText = `Hannah: ${fmt(p1_hannah)} | Tony: ${fmt(p1_tony)}`;
-    document.getElementById('res_dd_start_total').innerText = fmt(dd_start_hannah + dd_start_tony);
-    document.getElementById('res_dd_start_sub').innerText = `Hannah: ${fmt(dd_start_hannah)} | Tony: ${fmt(dd_start_tony)}`;
-    document.getElementById('res_ages_at_dd').innerText = `${hannahAgeAtDD} & ${tonyAgeAtDD}`;
-    document.getElementById('res_ages_sub').innerText = `Hannah: age ${hannahAgeAtDD} | Tony: age ${tonyAgeAtDD}`;
-    document.getElementById('res_dd_end_total').innerText = fmt(dd_end_total);
-
-    renderExpenses('isa');
-}
-
-function calculatePension() {
-    const h_dc_init = parseFloat(document.getElementById('p_hannah_dc').value) || 0;
-    const h_contrib = parseFloat(document.getElementById('p_hannah_contrib').value) || 0;
-    const h_retire_age = parseInt(document.getElementById('p_hannah_retire_age').value) || 60;
-    const h_state_age = parseInt(document.getElementById('p_hannah_state_age').value) || 67;
-    const h_db_amt = parseFloat(document.getElementById('p_hannah_db_amt').value) || 0;
-    const h_db_age = parseInt(document.getElementById('p_hannah_db_age').value) || 65;
-
-    const t_dc_init = parseFloat(document.getElementById('p_tony_dc').value) || 0;
-    const t_contrib = parseFloat(document.getElementById('p_tony_contrib').value) || 0;
-    const t_retire_age = parseInt(document.getElementById('p_tony_retire_age').value) || 60;
-    const t_state_age = parseInt(document.getElementById('p_tony_state_age').value) || 67;
-
-    const target_net = parseFloat(document.getElementById('p_target_net').value) || 0;
-    const growth_rate = (parseFloat(document.getElementById('p_growth').value) || 0) / 100 / 12;
-    const state_amt = parseFloat(document.getElementById('p_state_amt').value) || 0;
-
-    const allowance = parseFloat(document.getElementById('p_tax_allowance').value) || 0;
-    const basic_rate = (parseFloat(document.getElementById('p_tax_basic_rate').value) || 0) / 100;
-    const basic_thresh = parseFloat(document.getElementById('p_tax_basic_thresh').value) || 0;
-    const higher_rate = (parseFloat(document.getElementById('p_tax_higher_rate').value) || 0) / 100;
-
-    let h_dc = h_dc_init;
-    let t_dc = t_dc_init;
-    let tbody = document.getElementById('pensionScheduleBody');
-    tbody.innerHTML = '';
-
-    const currentHannahAge = calculateAge(HANNAH_DOB, 0);
-    const currentTonyAge = calculateAge(TONY_DOB, 0);
-
-    let potAtRetire = 0;
-    let estTaxAnnual = 0;
-
-    for (let yr = 1; yr <= 35; yr++) {
-        const h_age = currentHannahAge + yr;
-        const t_age = currentTonyAge + yr;
-
-        let db_income = (h_age >= h_db_age) ? h_db_amt : 0;
-        let state_income = 0;
-        if (h_age >= h_state_age) state_income += state_amt;
-        if (t_age >= t_state_age) state_income += state_amt;
-
-        let is_retire = (h_age >= h_retire_age || t_age >= t_retire_age);
-        let phaseBadge = "badge-p1";
-        let phaseText = "Accumulation";
-
-        if (is_retire) {
-            const has_db = db_income > 0;
-            const has_state = state_income > 0;
-            if (has_db && has_state) {
-                phaseText = "DB & State Pension Active";
-                phaseBadge = "badge-db-state";
-            } else if (has_db) {
-                phaseText = "DB Income Active";
-                phaseBadge = "badge-db";
-            } else if (has_state) {
-                phaseText = "State Pension Active";
-                phaseBadge = "badge-state";
-            } else {
-                phaseText = "Retirement Drawdown";
-                phaseBadge = "badge-dd";
-            }
-        }
-
-        let needed_from_dc_net = is_retire ? Math.max(0, target_net - db_income - state_income) : 0;
-
-        let total_taxable = needed_from_dc_net + db_income + state_income;
-        let est_tax = 0;
-        if (total_taxable > allowance) {
-            let taxable = total_taxable - allowance;
-            let basic_band = Math.min(taxable, basic_thresh - allowance);
-            let higher_band = Math.max(0, taxable - basic_band);
-            est_tax = (basic_band * basic_rate) + (higher_band * higher_rate);
-        }
-
-        let gross_dc_drawdown = needed_from_dc_net + (est_tax * (needed_from_dc_net / (total_taxable || 1)));
-
-        for (let m = 1; m <= 12; m++) {
-            let h_c = (!is_retire) ? h_contrib : 0;
-            let t_c = (!is_retire) ? t_contrib : 0;
-            let w = gross_dc_drawdown / 12;
-
-            let comb = h_dc + t_dc;
-            let m_g = comb * growth_rate;
-
-            if (comb > 0) {
-                let h_s = h_dc / comb;
-                let t_s = t_dc / comb;
-                h_dc = Math.max(0, h_dc + (m_g * h_s) + h_c - (w * h_s));
-                t_dc = Math.max(0, t_dc + (m_g * t_s) + t_c - (w * t_s));
-            } else {
-                h_dc = Math.max(0, h_dc + h_c);
-                t_dc = Math.max(0, t_dc + t_c);
-            }
-        }
-
-        if (h_age === h_retire_age) {
-            potAtRetire = h_dc + t_dc;
-            estTaxAnnual = est_tax;
-        }
-
-        tbody.innerHTML += `<tr>
-            <td>Year ${yr}</td>
-            <td>Age ${h_age} / ${t_age}</td>
-            <td><span class="badge ${phaseBadge}">${phaseText}</span></td>
-            <td class="text-hannah">${fmt(h_dc)}</td>
-            <td class="text-tony">${fmt(t_dc)}</td>
-            <td>${fmt(db_income)}</td>
-            <td>${fmt(state_income)}</td>
-            <td>${gross_dc_drawdown > 0 ? '-' + fmt(gross_dc_drawdown) : '£0'}</td>
-            <td class="text-combined">${fmt(h_dc + t_dc)}</td>
-        </tr>`;
-    }
-
-    document.getElementById('p_res_pot_retire').innerText = fmt(potAtRetire);
-    document.getElementById('p_res_req_dc').innerText = fmt(target_net);
-    document.getElementById('p_res_tax_est').innerText = fmt(estTaxAnnual);
-
-    renderExpenses('pension');
-}
-
-function populateISADropdown() {
-    const profiles = getProfiles();
-    const select = document.getElementById('p_isa_profile');
-    select.innerHTML = '';
-    for (let key in profiles) {
-        let opt = document.createElement('option');
-        opt.value = key;
-        opt.innerText = key;
-        select.appendChild(opt);
-    }
-    const endTotal = document.getElementById('res_dd_end_total').innerText;
-    document.getElementById('p_res_isa_pot').innerText = endTotal;
-}
-
-function getProfiles() {
-    let stored = localStorage.getItem('isa_planner_profiles');
-    if (!stored) {
-        localStorage.setItem('isa_planner_profiles', JSON.stringify(defaultProfiles));
-        return defaultProfiles;
-    }
-    return JSON.parse(stored);
-}
-
-function refreshProfileDropdown(selectedKey) {
-    let profiles = getProfiles();
-    let select = document.getElementById('profileSelect');
-    select.innerHTML = '';
-    for (let key in profiles) {
-        let opt = document.createElement('option');
-        opt.value = key;
-        opt.innerText = key;
-        if (key === selectedKey) opt.selected = true;
-        select.appendChild(opt);
-    }
-}
-
-function loadProfile() {
-    let key = document.getElementById('profileSelect').value;
-    let profiles = getProfiles();
-    if (profiles[key]) setInputs(profiles[key]);
-}
-
-function saveNewProfile() {
-    let name = document.getElementById('newProfileName').value.trim();
-    if (!name) return alert("Please enter a profile name.");
-    let profiles = getProfiles();
-    profiles[name] = getInputs();
-    localStorage.setItem('isa_planner_profiles', JSON.stringify(profiles));
-    document.getElementById('newProfileName').value = '';
-    refreshProfileDropdown(name);
-}
-
-function updateCurrentProfile() {
-    let key = document.getElementById('profileSelect').value;
-    if (!key) return;
-    let profiles = getProfiles();
-    profiles[key] = getInputs();
-    localStorage.setItem('isa_planner_profiles', JSON.stringify(profiles));
-    alert(`Profile "${key}" updated!`);
-}
-
-function deleteProfile() {
-    let key = document.getElementById('profileSelect').value;
-    if (!key) return;
-    if (confirm(`Delete profile "${key}"?`)) {
-        let profiles = getProfiles();
-        delete profiles[key];
-        localStorage.setItem('isa_planner_profiles', JSON.stringify(profiles));
-        refreshProfileDropdown(Object.keys(profiles)[0]);
-        loadProfile();
-    }
-}
-
-function shareWhatsApp() {
-    const shareUrl = window.location.href;
-    const message = `📊 *ISA & Pension Financial Plan Summary*\n\nView full plan here:\n${shareUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-}
-
-function sharePlan() {
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(window.location.href).then(() => alert("Link copied!"));
-    }
-}
-
-window.onload = function() {
-    refreshProfileDropdown("Default Plan (3-Year Move)");
-    loadProfile();
-};
-</script>
-</body>
-</html>
+            <div class="metric-card"><div class="label">Est. Combined Income Tax</div><div class="value" id="p_res_tax_est">£
