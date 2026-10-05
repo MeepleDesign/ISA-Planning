@@ -5,20 +5,27 @@
     <title>ISA & Pension Financial Planner</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; color: #333; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1, h2 { color: #004080; }
         .section { margin-bottom: 25px; padding: 15px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; }
-        label { display: block; margin-top: 10px; font-weight: bold; }
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
         input, select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
         th { background-color: #004080; color: white; }
+        .expense-row { display: flex; gap: 10px; margin-top: 5px; align-items: center; }
+        .expense-row input { margin-top: 0; }
+        button { background: #004080; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; margin-top: 10px; }
+        button:hover { background: #003366; }
+        .delete-btn { background: #cc0000; padding: 6px 10px; margin-top: 0; }
+        .delete-btn:hover { background: #990000; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>ISA & Pension Financial Planner</h1>
+    <p>Multi-phase ISA and Pension Retirement Modeller</p>
     
     <!-- Profile Selection Bar -->
     <div class="section">
@@ -71,10 +78,32 @@
         <input type="number" step="0.1" id="netReturn" value="6.5" oninput="calculate()">
     </div>
 
+    <!-- Expense Profiles -->
+    <div class="section">
+        <h2>Annual Drawdown Expenses Breakdown</h2>
+        <div id="expenseList"></div>
+        <button onclick="addExpenseItem()">+ Add Expense Item</button>
+        <p id="expenseSummary" style="margin-top: 15px; font-weight: bold;"></p>
+    </div>
+
     <!-- Results Display -->
     <div class="section">
         <h2>Results Summary</h2>
         <p id="summaryOutput">Calculating...</p>
+        
+        <h3>Year-by-Year Schedule</h3>
+        <table id="scheduleTable">
+            <thead>
+                <tr>
+                    <th>Year / Phase</th>
+                    <th>Hannah Contrib.</th>
+                    <th>Tony Contrib.</th>
+                    <th>Total Growth</th>
+                    <th>Withdrawal</th>
+                </tr>
+            </thead>
+            <tbody id="scheduleBody"></tbody>
+        </table>
     </div>
 </div>
 
@@ -103,11 +132,78 @@
         }
     };
 
-    // Initialize Local Storage on First Load / New Instance
+    const defaultExpenses = [
+        { name: "Food", amount: 4800 },
+        { name: "Energy", amount: 1600 },
+        { name: "Water", amount: 1100 },
+        { name: "TV Licence", amount: 180 },
+        { name: "Home & Building Insurance", amount: 300 },
+        { name: "Broadband", amount: 350 },
+        { name: "Council Tax", amount: 3000 },
+        { name: "Property Maintenance", amount: 2400 },
+        { name: "Car Costs", amount: 1600 },
+        { name: "Car Petrol", amount: 1000 },
+        { name: "Christmas Presents", amount: 1600 },
+        { name: "Other Presents", amount: 500 },
+        { name: "Medicine", amount: 200 },
+        { name: "Mobile Phone", amount: 360 },
+        { name: "Subscriptions", amount: 840 },
+        { name: "Tony & Hannah Disposable", amount: 7620 },
+        { name: "House Bits", amount: 1800 },
+        { name: "Doing Stuff", amount: 6250 }
+    ];
+
     function initializeStorage() {
         if (!localStorage.getItem('savingsProfiles')) {
             localStorage.setItem('savingsProfiles', JSON.stringify(defaultSavingsProfiles));
         }
+        if (!localStorage.getItem('expenseProfiles')) {
+            localStorage.setItem('expenseProfiles', JSON.stringify(defaultExpenses));
+        }
+    }
+
+    function loadExpenses() {
+        initializeStorage();
+        const expenses = JSON.parse(localStorage.getItem('expenseProfiles')) || defaultExpenses;
+        const container = document.getElementById('expenseList');
+        container.innerHTML = '';
+        
+        expenses.forEach((exp, index) => {
+            const row = document.createElement('div');
+            row.className = 'expense-row';
+            row.innerHTML = `
+                <input type="text" value="${exp.name}" oninput="updateExpense(${index}, 'name', this.value)">
+                <input type="number" value="${exp.amount}" oninput="updateExpense(${index}, 'amount', this.value)">
+                <button class="delete-btn" onclick="removeExpense(${index})">✕</button>
+            `;
+            container.appendChild(row);
+        });
+        calculate();
+    }
+
+    function updateExpense(index, field, value) {
+        let expenses = JSON.parse(localStorage.getItem('expenseProfiles'));
+        if (field === 'amount') {
+            expenses[index][field] = parseFloat(value) || 0;
+        } else {
+            expenses[index][field] = value;
+        }
+        localStorage.setItem('expenseProfiles', JSON.stringify(expenses));
+        calculate();
+    }
+
+    function addExpenseItem() {
+        let expenses = JSON.parse(localStorage.getItem('expenseProfiles'));
+        expenses.push({ name: "New Item", amount: 0 });
+        localStorage.setItem('expenseProfiles', JSON.stringify(expenses));
+        loadExpenses();
+    }
+
+    function removeExpense(index) {
+        let expenses = JSON.parse(localStorage.getItem('expenseProfiles'));
+        expenses.splice(index, 1);
+        localStorage.setItem('expenseProfiles', JSON.stringify(expenses));
+        loadExpenses();
     }
 
     function loadSelectedSavingsProfile() {
@@ -137,17 +233,81 @@
     }
 
     function calculate() {
-        // Placeholder calculation logic routine
-        const target = parseFloat(document.getElementById('targetDrawdown').value) || 0;
-        document.getElementById('summaryOutput').innerText = `Target Annual Drawdown configured to: £${target.toLocaleString()}`;
-    }
+        // Retrieve inputs
+        const hStart = parseFloat(document.getElementById('hannahStarting').value) || 0;
+        const hP1Mo = parseFloat(document.getElementById('hannahPhase1Mo').value) || 0;
+        const hP1Yrs = parseInt(document.getElementById('hannahPhase1Yrs').value) || 0;
+        const hP2Mo = parseFloat(document.getElementById('hannahPhase2Mo').value) || 0;
 
-    // Run setup on startup
-    window.onload = function() {
-        initializeStorage();
-        loadSelectedSavingsProfile();
-    };
-</script>
+        const tStart = parseFloat(document.getElementById('tonyStarting').value) || 0;
+        const tP1Mo = parseFloat(document.getElementById('tonyPhase1Mo').value) || 0;
+        const tP1Yrs = parseInt(document.getElementById('tonyPhase1Yrs').value) || 0;
+        const tP2Mo = parseFloat(document.getElementById('tonyPhase2Mo').value) || 0;
 
-</body>
-</html>
+        const ddStartYear = parseInt(document.getElementById('drawdownStart').value) || 15;
+        const ddDuration = parseInt(document.getElementById('drawdownDuration').value) || 5;
+        const targetDrawdown = parseFloat(document.getElementById('targetDrawdown').value) || 0;
+        const netReturnRate = (parseFloat(document.getElementById('netReturn').value) || 0) / 100;
+
+        // Calculate total allocated expenses
+        const expenses = JSON.parse(localStorage.getItem('expenseProfiles')) || [];
+        const totalAllocatedExpenses = expenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        const unallocated = targetDrawdown - totalAllocatedExpenses;
+
+        document.getElementById('expenseSummary').innerText = 
+            `Total Allocated Expenses: £${totalAllocatedExpenses.toLocaleString()} | Unallocated Drawdown: £${unallocated.toLocaleString()}`;
+
+        // Simulation Loop
+        let hPot = hStart;
+        let tPot = tStart;
+        let scheduleHtml = '';
+        
+        const totalYears = ddStartYear + ddDuration + 5; // Extra post-drawdown buffer years
+
+        for (let year = 1; year <= totalYears; year++) {
+            let phaseName = "";
+            let hContrib = 0;
+            let tContrib = 0;
+            let withdrawal = 0;
+
+            if (year < ddStartYear) {
+                phaseName = "Savings";
+                // Hannah Contribution Phase logic
+                hContrib = (year <= hP1Yrs ? hP1Mo : hP2Mo) * 12;
+                // Tony Contribution Phase logic
+                tContrib = (year <= tP1Yrs ? tP1Mo : tP2Mo) * 12;
+
+                hPot = (hPot + hContrib) * (1 + netReturnRate);
+                tPot = (tPot + tContrib) * (1 + netReturnRate);
+            } else if (year < ddStartYear + ddDuration) {
+                phaseName = "Drawdown";
+                withdrawal = -targetDrawdown;
+                
+                // Draw down proportionally from pots
+                let totalPot = hPot + tPot;
+                if (totalPot > 0) {
+                    let hShare = hPot / totalPot;
+                    let tShare = tPot / totalPot;
+                    hPot = (hPot - (targetDrawdown * hShare)) * (1 + netReturnRate);
+                    tPot = (tPot - (targetDrawdown * tShare)) * (1 + netReturnRate);
+                }
+            } else {
+                phaseName = "Post-Drawdown";
+                hPot = hPot * (1 + netReturnRate);
+                tPot = tPot * (1 + netReturnRate);
+            }
+
+            let totalGrowth = (hPot + tPot) - (hPot / (1 + netReturnRate)) - hContrib - tContrib;
+
+            scheduleHtml += `<tr>
+                <td>Yr ${year} (${phaseName})</td>
+                <td>£${hContrib.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                <td>£${tContrib.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                <td>£${totalGrowth.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                <td>${withdrawal < 0 ? '-£' + Math.abs(withdrawal).toLocaleString() : '£0'}</td>
+            </tr>`;
+        }
+
+        document.getElementById('scheduleBody').innerHTML = scheduleHtml;
+        document.getElementById('summaryOutput').innerText = 
+            `Pot at Drawdown Start (Year ${ddStartYear}): £${(hPot + tPot).toLocaleString(undefined, {maximumFractionDigits
