@@ -2,338 +2,189 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ISA & Pension Financial Planner</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; color: #333; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1, h2, h3 { color: #004080; }
-        .section { margin-bottom: 25px; padding: 15px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; }
-        label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
-        input, select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
-        th { background-color: #004080; color: white; }
-        .expense-row { display: flex; gap: 10px; margin-top: 5px; align-items: center; }
-        .expense-row input { margin-top: 0; }
-        button { background: #004080; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; margin-top: 10px; }
-        button:hover { background: #003366; }
-        .delete-btn { background: #cc0000; padding: 6px 10px; margin-top: 0; }
-        .delete-btn:hover { background: #990000; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>ISA & Pension Financial Planner</h1>
-    <p>Multi-phase ISA and Pension Retirement Modeller</p>
-    
-    <!-- Profile Selection Bar -->
-    <div class="section">
-        <h2>Savings Profiles</h2>
-        <label for="savingsProfileSelect">Choose Savings Profile:</label>
-        <select id="savingsProfileSelect" onchange="loadSelectedSavingsProfile()">
-            <option value="Realistic Less Drawdown">Realistic Less Drawdown</option>
-            <option value="Hopeful Less Drawdown">Hopeful Less Drawdown</option>
-            <option value="Realistic">Realistic</option>
-            <option value="Hopeful">Hopeful</option>
-        </select>
-        <button onclick="resetProfilesToDefault()" style="background:#555; margin-top: 10px;">Reset Profiles to Default</button>
-    </div>
-
-    <!-- Hannah's ISA Inputs -->
-    <div class="section">
-        <h2>Hannah's ISA</h2>
-        <label>Starting Balance (£):</label>
-        <input type="number" id="hannahStarting" value="25500" oninput="calculate()">
-        <label>Phase 1 (£/Mo):</label>
-        <input type="number" id="hannahPhase1Mo" value="800" oninput="calculate()">
-        <label>Phase 1 (Yrs):</label>
-        <input type="number" id="hannahPhase1Yrs" value="2" oninput="calculate()">
-        <label>Phase 2 (£/Mo):</label>
-        <input type="number" id="hannahPhase2Mo" value="100" oninput="calculate()">
-    </div>
-
-    <!-- Tony's ISA Inputs -->
-    <div class="section">
-        <h2>Tony's ISA</h2>
-        <label>Starting Balance (£):</label>
-        <input type="number" id="tonyStarting" value="42824" oninput="calculate()">
-        <label>Phase 1 (£/Mo):</label>
-        <input type="number" id="tonyPhase1Mo" value="600" oninput="calculate()">
-        <label>Phase 1 (Yrs):</label>
-        <input type="number" id="tonyPhase1Yrs" value="4" oninput="calculate()">
-        <label>Phase 2 (£/Mo):</label>
-        <input type="number" id="tonyPhase2Mo" value="800" oninput="calculate()">
-    </div>
-
-    <!-- Drawdown Settings -->
-    <div class="section">
-        <h2>Drawdown Settings</h2>
-        <label>Drawdown Start (Yrs):</label>
-        <input type="number" id="drawdownStart" value="16" oninput="calculate()">
-        <label>Duration (Yrs):</label>
-        <input type="number" id="drawdownDuration" value="5" oninput="calculate()">
-        <label>Target Annual Drawdown (£):</label>
-        <input type="number" id="targetDrawdown" value="65000" oninput="calculate()">
-        <label>Net Return (%):</label>
-        <input type="number" step="0.1" id="netReturn" value="6.5" oninput="calculate()">
-    </div>
-
-    <!-- Expense Profiles -->
-    <div class="section">
-        <h2>Annual Drawdown Expenses Breakdown</h2>
-        <div id="expenseList"></div>
-        <button onclick="addExpenseItem()">+ Add Expense Item</button>
-        <p id="expenseSummary" style="margin-top: 15px; font-weight: bold;"></p>
-    </div>
-
-    <!-- Results Display -->
-    <div class="section">
-        <h2>Results Summary</h2>
-        <p id="summaryOutput">Calculating...</p>
-        
-        <h3>Year-by-Year Schedule</h3>
-        <table id="scheduleTable">
-            <thead>
-                <tr>
-                    <th>Year / Phase</th>
-                    <th>Hannah Contrib.</th>
-                    <th>Tony Contrib.</th>
-                    <th>Total Growth</th>
-                    <th>Withdrawal</th>
-                </tr>
-            </thead>
-            <tbody id="scheduleBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    // Hardcoded Profiles with exact parameters
-    const defaultSavingsProfiles = {
-        "Realistic Less Drawdown": {
-            hannah: { startingBalance: 25500, phase1Monthly: 800, phase1Years: 2, phase2Monthly: 100 },
-            tony: { startingBalance: 42824, phase1Monthly: 600, phase1Years: 4, phase2Monthly: 800 },
-            drawdown: { startYears: 16, durationYears: 5, targetAnnual: 65000, netReturn: 6.5 }
-        },
-        "Hopeful Less Drawdown": {
-            hannah: { startingBalance: 25500, phase1Monthly: 800, phase1Years: 2, phase2Monthly: 300 },
-            tony: { startingBalance: 42824, phase1Monthly: 600, phase1Years: 4, phase2Monthly: 1000 },
-            drawdown: { startYears: 13, durationYears: 8, targetAnnual: 65000, netReturn: 6.5 }
-        },
-        "Realistic": {
-            hannah: { startingBalance: 25500, phase1Monthly: 800, phase1Years: 2, phase2Monthly: 100 },
-            tony: { startingBalance: 42824, phase1Monthly: 600, phase1Years: 4, phase2Monthly: 800 },
-            drawdown: { startYears: 15, durationYears: 6, targetAnnual: 80000, netReturn: 6.5 }
-        },
-        "Hopeful": {
-            hannah: { startingBalance: 25500, phase1Monthly: 800, phase1Years: 2, phase2Monthly: 300 },
-            tony: { startingBalance: 42824, phase1Monthly: 600, phase1Years: 4, phase2Monthly: 1000 },
-            drawdown: { startYears: 14, durationYears: 7, targetAnnual: 80000, netReturn: 6.5 }
+        *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #cbd5e1;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --hannah-color: #d946ef;
+            --tony-color: #0284c7;
+            --combined-color: #16a34a;
+            --pension-color: #7c3aed;
         }
-    };
-
-    const defaultExpenses = [
-        { name: "Food", amount: 4800 },
-        { name: "Energy", amount: 1600 },
-        { name: "Water", amount: 1100 },
-        { name: "TV Licence", amount: 180 },
-        { name: "Home & Building Insurance", amount: 300 },
-        { name: "Broadband", amount: 350 },
-        { name: "Council Tax", amount: 3000 },
-        { name: "Property Maintenance", amount: 2400 },
-        { name: "Car Costs", amount: 1600 },
-        { name: "Car Petrol", amount: 1000 },
-        { name: "Christmas Presents", amount: 1600 },
-        { name: "Other Presents", amount: 500 },
-        { name: "Medicine", amount: 200 },
-        { name: "Mobile Phone", amount: 360 },
-        { name: "Subscriptions", amount: 840 },
-        { name: "Tony & Hannah Disposable", amount: 7620 },
-        { name: "House Bits", amount: 1800 },
-        { name: "Doing Stuff", amount: 6250 }
-    ];
-
-    function initializeStorage() {
-        if (!localStorage.getItem('savingsProfiles')) {
-            localStorage.setItem('savingsProfiles', JSON.stringify(defaultSavingsProfiles));
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
         }
-        if (!localStorage.getItem('expenseProfiles')) {
-            localStorage.setItem('expenseProfiles', JSON.stringify(defaultExpenses));
+        .container {
+            max-width: 1150px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
         }
-    }
-
-    function resetProfilesToDefault() {
-        localStorage.setItem('savingsProfiles', JSON.stringify(defaultSavingsProfiles));
-        localStorage.setItem('expenseProfiles', JSON.stringify(defaultExpenses));
-        loadExpenses();
-        loadSelectedSavingsProfile();
-        alert("Profiles reset to defaults!");
-    }
-
-    function loadExpenses() {
-        initializeStorage();
-        const expenses = JSON.parse(localStorage.getItem('expenseProfiles')) || defaultExpenses;
-        const container = document.getElementById('expenseList');
-        container.innerHTML = '';
-        
-        expenses.forEach((exp, index) => {
-            const row = document.createElement('div');
-            row.className = 'expense-row';
-            row.innerHTML = `
-                <input type="text" value="${exp.name}" oninput="updateExpense(${index}, 'name', this.value)">
-                <input type="number" value="${exp.amount}" oninput="updateExpense(${index}, 'amount', this.value)">
-                <button class="delete-btn" onclick="removeExpense(${index})">✕</button>
-            `;
-            container.appendChild(row);
-        });
-        calculate();
-    }
-
-    function updateExpense(index, field, value) {
-        let expenses = JSON.parse(localStorage.getItem('expenseProfiles'));
-        if (field === 'amount') {
-            expenses[index][field] = parseFloat(value) || 0;
-        } else {
-            expenses[index][field] = value;
+        header {
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
         }
-        localStorage.setItem('expenseProfiles', JSON.stringify(expenses));
-        calculate();
-    }
-
-    function addExpenseItem() {
-        let expenses = JSON.parse(localStorage.getItem('expenseProfiles'));
-        expenses.push({ name: "New Item", amount: 0 });
-        localStorage.setItem('expenseProfiles', JSON.stringify(expenses));
-        loadExpenses();
-    }
-
-    function removeExpense(index) {
-        let expenses = JSON.parse(localStorage.getItem('expenseProfiles'));
-        expenses.splice(index, 1);
-        localStorage.setItem('expenseProfiles', JSON.stringify(expenses));
-        loadExpenses();
-    }
-
-    function loadSelectedSavingsProfile() {
-        initializeStorage();
-        const profileName = document.getElementById('savingsProfileSelect').value;
-        const profiles = JSON.parse(localStorage.getItem('savingsProfiles'));
-        const profile = profiles[profileName];
-
-        if (profile) {
-            document.getElementById('hannahStarting').value = profile.hannah.startingBalance;
-            document.getElementById('hannahPhase1Mo').value = profile.hannah.phase1Monthly;
-            document.getElementById('hannahPhase1Yrs').value = profile.hannah.phase1Years;
-            document.getElementById('hannahPhase2Mo').value = profile.hannah.phase2Monthly;
-
-            document.getElementById('tonyStarting').value = profile.tony.startingBalance;
-            document.getElementById('tonyPhase1Mo').value = profile.tony.phase1Monthly;
-            document.getElementById('tonyPhase1Yrs').value = profile.tony.phase1Years;
-            document.getElementById('tonyPhase2Mo').value = profile.tony.phase2Monthly;
-
-            document.getElementById('drawdownStart').value = profile.drawdown.startYears;
-            document.getElementById('drawdownDuration').value = profile.drawdown.durationYears;
-            document.getElementById('targetDrawdown').value = profile.drawdown.targetAnnual;
-            document.getElementById('netReturn').value = profile.drawdown.netReturn;
-
-            calculate();
+        h1 { margin: 0; font-size: 24px; color: #1e293b; }
+        .subtitle { margin-top: 4px; font-size: 14px; color: var(--text-muted); }
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #e2e8f0;
         }
-    }
-
-    function calculate() {
-        const hStart = parseFloat(document.getElementById('hannahStarting').value) || 0;
-        const hP1Mo = parseFloat(document.getElementById('hannahPhase1Mo').value) || 0;
-        const hP1Yrs = parseInt(document.getElementById('hannahPhase1Yrs').value) || 0;
-        const hP2Mo = parseFloat(document.getElementById('hannahPhase2Mo').value) || 0;
-
-        const tStart = parseFloat(document.getElementById('tonyStarting').value) || 0;
-        const tP1Mo = parseFloat(document.getElementById('tonyPhase1Mo').value) || 0;
-        const tP1Yrs = parseInt(document.getElementById('tonyPhase1Yrs').value) || 0;
-        const tP2Mo = parseFloat(document.getElementById('tonyPhase2Mo').value) || 0;
-
-        const ddStartYear = parseInt(document.getElementById('drawdownStart').value) || 15;
-        const ddDuration = parseInt(document.getElementById('drawdownDuration').value) || 5;
-        const targetDrawdown = parseFloat(document.getElementById('targetDrawdown').value) || 0;
-        const netReturnRate = (parseFloat(document.getElementById('netReturn').value) || 0) / 100;
-
-        const expenses = JSON.parse(localStorage.getItem('expenseProfiles')) || [];
-        const totalAllocatedExpenses = expenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-        const unallocated = targetDrawdown - totalAllocatedExpenses;
-
-        document.getElementById('expenseSummary').innerText = 
-            `Total Allocated Expenses: £${totalAllocatedExpenses.toLocaleString()} | Unallocated Drawdown: £${unallocated.toLocaleString()}`;
-
-        let hPot = hStart;
-        let tPot = tStart;
-        let scheduleHtml = '';
-        let potAtDrawdown = 0;
-        
-        const totalYears = ddStartYear + ddDuration + 5;
-
-        for (let year = 1; year <= totalYears; year++) {
-            let phaseName = "";
-            let hContrib = 0;
-            let tContrib = 0;
-            let withdrawal = 0;
-            let prevTotalPot = hPot + tPot; // Capture pot total before this year's actions
-
-            // Capture exact pot size at the start of the drawdown year
-            if (year === ddStartYear) {
-                potAtDrawdown = hPot + tPot;
-            }
-
-            if (year < ddStartYear) {
-                phaseName = "Savings";
-                hContrib = (year <= hP1Yrs ? hP1Mo : hP2Mo) * 12;
-                tContrib = (year <= tP1Yrs ? tP1Mo : tP2Mo) * 12;
-
-                hPot = (hPot + hContrib) * (1 + netReturnRate);
-                tPot = (tPot + tContrib) * (1 + netReturnRate);
-            } else if (year < ddStartYear + ddDuration) {
-                phaseName = "Drawdown";
-                withdrawal = -targetDrawdown;
-                
-                let totalPot = hPot + tPot;
-                if (totalPot > 0) {
-                    let hShare = hPot / totalPot;
-                    let tShare = tPot / totalPot;
-                    // Deduct withdrawal proportionally, then apply growth
-                    hPot = (hPot - (targetDrawdown * hShare)) * (1 + netReturnRate);
-                    tPot = (tPot - (targetDrawdown * tShare)) * (1 + netReturnRate);
-                }
-            } else {
-                phaseName = "Post-Drawdown";
-                hPot = hPot * (1 + netReturnRate);
-                tPot = tPot * (1 + netReturnRate);
-            }
-
-            // Growth is the difference in total pots minus the contributions added and withdrawals taken
-            let totalGrowth = (hPot + tPot) - prevTotalPot - hContrib - tContrib - withdrawal;
-
-            scheduleHtml += `<tr>
-                <td>Yr ${year} (${phaseName})</td>
-                <td>£${hContrib.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
-                <td>£${tContrib.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
-                <td>£${totalGrowth.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
-                <td>${withdrawal < 0 ? '-£' + Math.abs(withdrawal).toLocaleString() : '£0'}</td>
-            </tr>`;
+        .tab-btn {
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
         }
-
-        // If they enter a timeline where drawdown doesn't start, default it nicely
-        if (potAtDrawdown === 0) { potAtDrawdown = hPot + tPot; }
-
-        document.getElementById('scheduleBody').innerHTML = scheduleHtml;
-        document.getElementById('summaryOutput').innerText = 
-            `Pot at Drawdown Start (Year ${ddStartYear}): £${potAtDrawdown.toLocaleString(undefined, {maximumFractionDigits:0})} | Final Remaining Balance: £${(hPot + tPot).toLocaleString(undefined, {maximumFractionDigits:0})}`;
-    }
-
-    window.onload = function() {
-        initializeStorage();
-        loadExpenses();
-        loadSelectedSavingsProfile();
-    };
-</script>
-
-</body>
-</html>
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .profile-bar {
+            background: #f1f5f9;
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .profile-bar.expense-bar {
+            background: #e2e8f0;
+        }
+        .profile-bar label { font-weight: 600; font-size: 14px; color: #334155; }
+        select, input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            color: var(--text-main);
+            outline: none;
+        }
+        .profile-bar select, .profile-bar input[type="text"] { width: auto; }
+        select:focus, input:focus { border-color: var(--primary); }
+        .btn {
+            padding: 9px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-secondary { background: #64748b; }
+        .btn-whatsapp { background: #25D366; color: #fff; }
+        .btn-share { background: #059669; }
+        .btn-danger { background: #ef4444; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+        .grid-layout-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .section-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .section-card.hannah { border-top: 4px solid var(--hannah-color); }
+        .section-card.tony { border-top: 4px solid var(--tony-color); }
+        .section-card.general { border-top: 4px solid var(--combined-color); }
+        .section-card.pension { border-top: 4px solid var(--pension-color); }
+        .section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .hannah-title { color: var(--hannah-color); }
+        .tony-title { color: var(--tony-color); }
+        .general-title { color: var(--combined-color); }
+        .pension-title { color: var(--pension-color); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-group { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+        .form-group.full-width { grid-column: span 2; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .metric-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .metric-card .label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        .metric-card .value { font-size: 22px; font-weight: 800; color: #0f172a; margin-top: 4px; }
+        .metric-card .sub-value { font-size: 12px; color: #64748b; margin-top: 2px; }
+        .metric-card.highlight { background: #ecfdf5; border-color: #a7f3d0; }
+        .metric-card.highlight .value { color: #047857; }
+        .expenses-container {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 28px;
+        }
+        .expense-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .expense-row input[type="text"] { flex: 2; }
+        .expense-row input[type="number"] { flex: 1; }
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: right; white-space: nowrap; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; font-weight: 700; color: #47556
